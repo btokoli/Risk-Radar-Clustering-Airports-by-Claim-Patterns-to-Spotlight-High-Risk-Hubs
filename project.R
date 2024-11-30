@@ -184,3 +184,184 @@ combined_plot <- sil_plot / inertia_plot +
   plot_annotation(title = "Comparison of Clustering Model Performance", 
                   subtitle = "Silhouette Scores and Inertia")
 print(combined_plot)
+
+
+#Descriptive Analysis of each cluster
+# Counting data points per cluster
+cluster_summary <- table(new_dataf$kmeansCluster)
+cluster_percentage <- prop.table(cluster_summary) * 100
+
+# Print results
+print(data.frame(Cluster = names(cluster_summary), 
+                 Count = as.numeric(cluster_summary),
+                 Percentage = cluster_percentage))
+
+library(dplyr)
+
+# Average Claim and Close Amount per cluster
+cluster_analysis <- new_dataf %>%
+  group_by(kmeansCluster) %>%
+  summarise(
+    Avg_Claim_Amount = mean(Claim.Amount, na.rm = TRUE),
+    Avg_Close_Amount = mean(Close.Amount, na.rm = TRUE),
+    Total_Claims = n()
+  )
+
+print(cluster_analysis)
+
+plot1<- ggplot(new_dataf, aes(x = as.factor(kmeansCluster), y = Claim.Amount)) +
+  geom_boxplot() +
+  labs(title = "Claim Amount Distribution Across Clusters",
+       x = "Cluster",
+       y = "Claim Amount") +
+  theme_minimal()
+
+plot2<-ggplot(new_dataf, aes(x = as.factor(kmeansCluster), y = Close.Amount)) +
+  geom_boxplot() +
+  labs(title = "Close Amount Distribution Across Clusters",
+       x = "Cluster",
+       y = "Close Amount") +
+  theme_minimal()
+plot1 + plot2
+
+
+# Analyzing distribution of Claim Type within clusters
+claim_type_distribution <- new_dataf %>%
+  group_by(kmeansCluster, Claim.Type) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+print(claim_type_distribution, n=Inf)
+
+# Analyzing distribution of Claim Site within clusters
+claim_site_distribution <- new_dataf %>%
+  group_by(kmeansCluster, Claim.Site) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+print(claim_site_distribution, n=Inf)
+
+# Analyzing distribution of Claim Disposition within clusters
+claim_disposition_distribution <- new_dataf %>%
+  group_by(kmeansCluster, Disposition) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+print(claim_disposition_distribution, n=Inf)
+
+
+library(ggplot2)
+# Example: Plotting claim counts by Incident Year for each cluster
+ggplot(new_dataf, aes(x = Incident.Year, fill = as.factor(kmeansCluster))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Claims by Year and Cluster", x = "Year", y = "Number of Claims") +
+  scale_fill_discrete(name = "Cluster") +
+  theme_minimal()
+
+ggplot(new_dataf, aes(x = Incident.Month.Num, fill = as.factor(kmeansCluster))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Claims by Month and Cluster", x = "Month", y = "Number of Claims") +
+  scale_fill_discrete(name = "Cluster") +
+  theme_minimal()
+
+# Identifying high-risk clusters based on claim patterns
+high_risk_clusters <- cluster_analysis %>%
+  filter(Avg_Claim_Amount > quantile(new_dataf$Claim.Amount, 0.75))  # Top 25% for claim amounts
+
+print(high_risk_clusters)
+
+
+# Analyzing distribution of Incident Month within clusters
+claim_in_month_distribution <- new_dataf %>%
+  group_by(kmeansCluster, Incident.Month) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+print(claim_in_month_distribution, n=Inf)
+
+#Median Claim AND Close amounts
+cluster_analysis_median <- new_dataf %>%
+  group_by(kmeansCluster) %>%
+  summarise(
+    Med_Claim_Amount = median(Claim.Amount, na.rm = TRUE),
+    Med_Close_Amount = median(Close.Amount, na.rm = TRUE),
+    Total_Claims = n()
+  )
+print(cluster_analysis_median)
+
+# Bar plot for Claim Types per cluster
+ggplot(claim_type_distribution, aes(x = Claim.Type, y = Percentage, fill = as.factor(kmeansCluster))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Claim Type Distribution by Cluster", x = "Claim Type", y = "Percentage") +
+  scale_fill_discrete(name = "Cluster") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+# Cluster summary visualization
+ggplot(cluster_analysis, aes(x = as.factor(kmeansCluster), y = Avg_Claim_Amount, fill = as.factor(kmeansCluster))) +
+  geom_bar(stat = "identity") +
+  labs(title = "Average Claim Amount by Cluster", x = "Cluster", y = "Average Claim Amount") +
+  scale_fill_discrete(name = "Cluster") +
+  theme_minimal()
+
+
+# Bar plot for Claim Disposition per cluster
+ggplot(claim_disposition_distribution, aes(x = Disposition, y = Percentage, fill = as.factor(kmeansCluster))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Claim Disposition Distribution by Cluster", x = "Claim Disposition", y = "Percentage") +
+  scale_fill_discrete(name = "Cluster") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Bar plot for Claim Site per cluster
+ggplot(claim_site_distribution, aes(x = Claim.Site, y = Percentage, fill = as.factor(kmeansCluster))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Claim Site Distribution by Cluster", x = "Claim Site", y = "Percentage") +
+  scale_fill_discrete(name = "Cluster") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#Stacked bar chart for incident month
+ggplot(claim_in_month_distribution, aes(x = factor(kmeansCluster), y = Percentage, fill = factor(Incident.Month))) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(
+    title = "Distribution of Incident Month within Clusters",
+    x = "Cluster",
+    y = "Percentage of Claims",
+    fill = "Incident Month"
+  ) +
+  theme_minimal()
+
+
+# Rearranging Incident.Month as an ordered factor
+claim_in_month_distribution$Incident.Month <- factor(
+  claim_in_month_distribution$Incident.Month,
+  levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+)
+ggplot(claim_in_month_distribution, aes(x = factor(Incident.Month), y = factor(kmeansCluster), fill = Percentage)) +
+  geom_tile() +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Percentage") +
+  labs(
+    title = "Heatmap of Incident Month Distribution by Cluster",
+    x = "Incident Month",
+    y = "Cluster"
+  ) +
+  theme_minimal()
+
+#ANOVA test for Claim Amount across clusters
+anova_result_claim <- aov(Claim.Amount ~ as.factor(kmeansCluster), data = new_dataf)
+summary(anova_result_claim)
+TukeyHSD(anova_result_claim)
+
+#ANOVA test for Close Amount across clusters
+anova_result_close <- aov(Close.Amount ~ as.factor(kmeansCluster), data = new_dataf)
+summary(anova_result_close)
+
+#Kruskal-Wallis test
+kruskal_test_claim <- kruskal.test(Claim.Amount ~ as.factor(kmeansCluster), data = new_dataf)
+print(kruskal_test_claim)
+
+kruskal_test_close <- kruskal.test(Close.Amount ~ as.factor(kmeansCluster), data = new_dataf)
+print(kruskal_test_close)
